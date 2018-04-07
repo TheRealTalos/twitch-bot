@@ -5,7 +5,8 @@ import csv
 import requests
 import time
 
-#TODO: fix that random error that makes no sense and is not reproducible wtf k
+#TODO: fix error when chat inactivity
+#TODO: make betting better
 #TODO: comment code
 
 s = socket.socket()
@@ -23,13 +24,11 @@ variables = {}
 bet_minerals = {}
 bet_team = {}
 
-betting = False
+betting = True
 
 last_winner = '0'
 
 last_time = 60
-
-
 
 def import_commands():
     with open("commands.csv") as file:
@@ -75,7 +74,7 @@ def update_csv():
             writer.writerow([data +  ':' + str(minerals[data])])
 
 def add_minerals():
-#    print(time.gmtime())
+    print(time.gmtime())
     global last_time
     if time.gmtime()[4] != last_time:
         last_time = time.gmtime()[4]
@@ -98,6 +97,14 @@ def respond(word, vars):
 
     send(response)
 
+def update_vars(username):
+    variables = {'#user': "@" + username,
+                '#minerals': minerals[username] if username in minerals.keys() else '0',
+                '#betminerals': bet_minerals[username] if username in bet_minerals.keys() else '0',
+                '#team': bet_team[username] if username in bet_team.keys() else '0',
+                '#winningteam': last_winner}
+
+
 import_commands()
 import_minerals()
 
@@ -117,16 +124,21 @@ while True:
             text_message_received = compiled_message.sub("", server_message_received)
             if username != "tmi":
                 print(t.strftime('%H:%M:%S', t.gmtime()) + ": " + username + ": " + text_message_received)
-                words = text_message_received.split(' ')
-
-                print(words)
-
-                for i in range(len(words)):
-                    words[i] = words[i].rstrip()
-
-                for i in range(len(words)):
-                    if is_command(words[i]):
-                        print(words[i] + " is a command\n")
+                words_in_message = text_message_received.split(' ')
+                words_in_message[-1] = words_in_message[-1][:-2]
+                words_in_message.append('NULLWORD\r\n')
+                print(words_in_message)
+                next_word_minerals = False
+                next_word_team = False
+                next_word_betting = False
+                next_word_winner = False
+                bet_command_complete = False
+                winner_command_complete = False
+                for word_in_message in words_in_message:
+                    word_in_message = word_in_message.rstrip()
+                    if is_command(word_in_message) or next_word_minerals or next_word_team or next_word_minerals \
+                            or next_word_betting or next_word_winner or bet_command_complete or winner_command_complete:
+                        print(word_in_message + " is a command\n")
 
                         variables = {'#user': "@" + username,
                                      '#minerals': minerals[username] if username in minerals.keys() else '0',
@@ -134,82 +146,72 @@ while True:
                                      '#team': bet_team[username] if username in bet_team.keys() else '0',
                                      '#winningteam': last_winner}
 
-                        if words[i] == '!bet':
-                            if betting:
-                                try:
-                                    a = words[i+1]
-                                    a = words[i+2]
-                                    del a
-
-                                    if int(words[i+1]) <= int(minerals[username]):
-                                        if username in bet_minerals.keys():
-                                            bet_minerals[username] = str(int(bet_minerals[username]) + int(words[i+1]))
-                                        else:
-                                             bet_minerals[username] = words[i+1]
-                                        minerals[username] = str(int(minerals[username]) - int(words[i+1]))
-                                        if words[i+2] == 'win' or words[i+2] == 'loss':
-                                            bet_team[username] = words[i+2]
-
-                                            variables = {'#user': "@" + username,
-                                                         '#minerals': minerals[
-                                                             username] if username in minerals.keys() else '0',
-                                                         '#betminerals': bet_minerals[
-                                                             username] if username in bet_minerals.keys() else '0',
-                                                         '#team': bet_team[
-                                                             username] if username in bet_team.keys() else '0',
-                                                         '#winningteam': last_winner}
-                                            respond('!bet', variables)
-                                        else:
-                                            send('That is not a valid value. Use !bet [amount] [win/loss]')
-                                    else:
-                                        send('Not enough minerals. You have {} minerals'.format(minerals[username]))
-
-                                except:
-                                    send('That is not a valid value. Use !bet [amount] [win/loss]')
+                        if word_in_message == '!bet' and betting:
+                            print(1)
+                            next_word_minerals = True
+                        elif next_word_minerals == True:
+                            print(2)
+                            if int(word_in_message) <= int(minerals[username]):
+                                if username in bet_minerals.keys():
+                                    bet_minerals[username] = str(int(bet_minerals[username]) + int(word_in_message))
+                                else:
+                                     bet_minerals[username] = word_in_message
+                                new_minerals = str(int(minerals[username]) - int(word_in_message))
+                                minerals[username] = new_minerals
+                                next_word_team = True
                             else:
-                                send('Betting is currently off. Please wait for the current game to end to place a bet on the next')
-
-                        elif words[i] == '!betting' and username == 'therealtalos':
-                            if words[i+1] == 'on':
+                                send('Not enough minerals. You have {} minerals'.format(minerals[username]))
+                            next_word_minerals = False
+                        elif next_word_team == True:
+                            print(3)
+                            bet_team[username] = word_in_message
+                            bet_command_complete = True
+                            next_word_team = False
+                        elif word_in_message == '!betting' and username == 'therealtalos':
+                            next_word_betting = True
+                        elif next_word_betting:
+                            if word_in_message == 'on':
                                 betting = True
                                 send('Betting is now on')
-                            elif words[i+1] == 'off':
+                                next_word_betting = False
+                            elif word_in_message == 'off':
                                 betting = False
                                 send('Betting is now off')
+                                next_word_betting = False
                             else:
-                                send('That is not a valid value. Use !betting [on/off]')
-
-                        elif words[i] == '!winner' and username == 'therealtalos':
-                            last_winner = words[i+1]
+                                send('That is not a valid value. Use !betting on/off')
+                        elif word_in_message == '!winner' and username == 'therealtalos':
+                            next_word_winner = True
+                        elif next_word_winner == True:
+                            last_winner = word_in_message
                             for user in list(bet_team):
                                 if bet_team[user] == last_winner:
                                     del bet_team[user]
                                     new_minerals = str(int(minerals[user]) + int(bet_minerals[user])*2)
                                     del bet_minerals[user]
                                     minerals[user] = new_minerals
+                                winner_command_complete = True
+                            next_word_winner = False
+                        elif not betting:
+                            send('Betting is currently off. Please wait for the current game to end to place a bet on the next')
+                        elif not word_in_message == '!winner' and not word_in_message == '!betting':
+                            respond(word_in_message, variables)
 
-                                variables = {'#user': "@" + username,
-                                             '#minerals': minerals[
-                                                 username] if username in minerals.keys() else '0',
-                                             '#betminerals': bet_minerals[
-                                                 username] if username in bet_minerals.keys() else '0',
-                                             '#team': bet_team[
-                                                 username] if username in bet_team.keys() else '0',
-                                             '#winningteam': last_winner}
-
-                                respond('!winner', variables)
-
-                        elif not words[i] == '!winner' and not words[i] == '!betting':
                             variables = {'#user': "@" + username,
-                                         '#minerals': minerals[
-                                             username] if username in minerals.keys() else '0',
+                                         '#minerals': minerals[username] if username in minerals.keys() else '0',
                                          '#betminerals': bet_minerals[
                                              username] if username in bet_minerals.keys() else '0',
-                                         '#team': bet_team[
-                                             username] if username in bet_team.keys() else '0',
+                                         '#team': bet_team[username] if username in bet_team.keys() else '0',
                                          '#winningteam': last_winner}
-                            respond(words[i], variables)
 
+                        if bet_command_complete:
+                            variables.update()
+                            respond('!bet', variables)
+                            bet_command_complete = False
+                        elif winner_command_complete:
+                            variables.update()
+                            respond('!winner', variables)
+                            winner_command_complete = False
     except IOError as e:
         t.sleep(0.0001)
     t.sleep(0.1)

@@ -1,10 +1,17 @@
 Command Trigger,Response
 gay,liman is gay
+urgay,liman is gay
+gey,liman is gay
+gae,liman is gay
+g.a.y,liman is gay
+urgey,liman is gay
+supergay,liman is gay
 !minerals,#user has #minerals minerals
 !bet,#user has bet #betminerals on #team
-!winner,Team #winningteam has won!
-\break,
-,
-Variables,
-#minerals,Returns the amount of minerals the \user has
-#user,Returns the username of the user who sent the trigger
+!winner,Game result: #winningteam!
+!betting,NULL
+\break
+
+Variables
+#minerals	Returns the amount of minerals the \user has
+#user	Returns the username of the user who sent the trigger
