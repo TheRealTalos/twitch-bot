@@ -14,7 +14,7 @@ s = socket.socket()
 HOST = "irc.chat.twitch.tv"
 PORT = 6667
 NICK = "gustavesbot"
-PASS = "oauth:lcydpwtchpthnvxwu84e77opbefys3"
+PASS = ""
 CHAN = "#gustaves_"
 
 commands = {}
